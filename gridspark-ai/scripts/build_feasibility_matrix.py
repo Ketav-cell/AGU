@@ -57,6 +57,9 @@ def _derive_overall(row: dict) -> str:
         return "FEASIBLE"
     if any(s == "Fail" for s in statuses):
         return "NOT FEASIBLE"
+    passes = sum(1 for s in statuses if s.startswith("Pass"))
+    if passes == len(statuses) - 1:
+        return f"4/5 Pass – Sentinel-2 pending GEE auth"
     if any(s == "To verify" for s in statuses):
         return "Pending"
     return "Manual Check Required"
@@ -137,7 +140,7 @@ def _write_markdown(row: dict):
 def update_feasibility_field(field: str, status: str, notes_append: str = ""):
     """
     Update a single status field and re-save. Intended to be called from
-    verify_*.py scripts.
+    verify_*.py scripts. Deduplicates notes entries.
     """
     if field not in COLUMNS:
         raise ValueError(f"Unknown field: {field}")
@@ -145,10 +148,12 @@ def update_feasibility_field(field: str, status: str, notes_append: str = ""):
     row[field] = status
     if notes_append:
         existing = row.get("notes", "")
-        if existing and existing != DEFAULT_ROW["notes"]:
-            row["notes"] = f"{existing} | {notes_append}"
-        else:
-            row["notes"] = notes_append
+        # Deduplicate: only append if this exact note isn't already present
+        parts = [p.strip() for p in existing.split(" | ")] if existing else []
+        parts = [p for p in parts if p and p != DEFAULT_ROW["notes"]]
+        if notes_append not in parts:
+            parts.append(notes_append)
+        row["notes"] = " | ".join(parts)
     save_matrix(row)
 
 

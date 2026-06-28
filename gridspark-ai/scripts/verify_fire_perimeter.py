@@ -21,9 +21,11 @@ Manual download instructions:
 """
 
 import sys
+import json
 import logging
 from pathlib import Path
 
+import requests
 import geopandas as gpd
 from shapely.geometry import Point
 
@@ -40,7 +42,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 log = logging.getLogger(__name__)
 
 # Known MTBS ID for Holiday Farm Fire
-MTBS_ID = "OR4418512222320200907"
+MTBS_ID = "OR4417212223120200908"
 HOLIDAY_FARM_KEYWORDS = ["holiday farm", "holidayfarm", MTBS_ID.lower()]
 
 
@@ -50,6 +52,49 @@ def build_aoi(buffer_m=5000):
     ).to_crs(CRS_PROJ)
     pt["geometry"] = pt.buffer(buffer_m)
     return pt.to_crs(CRS_GEO)
+
+
+WFIGS_ENDPOINT = (
+    "https://services3.arcgis.com/T4QMspbfLg3qTGWY/ArcGIS/rest/services/"
+    "WFIGS_Interagency_Perimeters/FeatureServer/0/query"
+)
+
+
+def try_wfigs_api() -> Path | None:
+    """
+    Attempt to download the Holiday Farm perimeter directly from the NIFC
+    WFIGS ArcGIS REST API and save to data/raw/.
+    """
+    out = DATA_RAW / "holiday_farm_perimeter.geojson"
+    if out.exists():
+        return out
+    log.info("Trying NIFC WFIGS API for Holiday Farm perimeter …")
+    try:
+        r = requests.get(
+            WFIGS_ENDPOINT,
+            params={
+                "where": "poly_IncidentName = 'Holiday Farm'",
+                "outFields": "*",
+                "f": "geojson",
+                "resultRecordCount": 5,
+            },
+            timeout=30,
+            headers={"User-Agent": "Mozilla/5.0"},
+        )
+        r.raise_for_status()
+        d = r.json()
+        feats = d.get("features", [])
+        if feats:
+            # Pick largest polygon by acreage
+            feats.sort(key=lambda f: f["properties"].get("poly_GISAcres", 0), reverse=True)
+            d["features"] = feats[:1]
+            with open(out, "w") as f:
+                json.dump(d, f)
+            log.info("WFIGS: downloaded Holiday Farm perimeter (%.0f acres)", feats[0]["properties"].get("poly_GISAcres", 0))
+            return out
+    except Exception as exc:
+        log.warning("WFIGS API failed: %s", exc)
+    return None
 
 
 def find_perimeter_file() -> Path | None:
@@ -121,7 +166,9 @@ def find_holiday_farm(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 def run():
     DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
 
-    perim_path = find_perimeter_file()
+    # Try automatic WFIGS download first, then fall back to local file
+    wfigs_path = try_wfigs_api()
+    perim_path = wfigs_path or find_perimeter_file()
 
     if perim_path is None:
         msg = (

@@ -44,10 +44,11 @@ log = logging.getLogger(__name__)
 # NCEI global-hourly direct CSV URL
 ISD_CSV_URL = (
     f"https://www.ncei.noaa.gov/data/global-hourly/access/"
-    f"{NOAA_ISD_YEAR}/{NOAA_ISD_STATION_ID}.csv"
+    f"{NOAA_ISD_YEAR}/{NOAA_ISD_STATION_ID.replace('-', '')}.csv"
 )
 
 LOCAL_FILE = DATA_RAW / f"{NOAA_ISD_STATION_ID}.csv"
+LOCAL_FILE_ALT = DATA_RAW / f"{NOAA_ISD_STATION_ID.replace('-', '')}.csv"
 
 # Focus window around the ignition event
 FOCUS_START = f"{NOAA_ISD_YEAR}-08-01"
@@ -121,13 +122,14 @@ def parse_isd_csv(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def load_local_isd() -> pd.DataFrame | None:
-    if LOCAL_FILE.exists():
-        log.info("Using local ISD file: %s", LOCAL_FILE)
-        try:
-            df = pd.read_csv(LOCAL_FILE, low_memory=False)
-            return parse_isd_csv(df)
-        except Exception as exc:
-            log.warning("Failed to parse local ISD file: %s", exc)
+    for candidate in (LOCAL_FILE, LOCAL_FILE_ALT):
+        if candidate.exists():
+            log.info("Using local ISD file: %s", candidate)
+            try:
+                df = pd.read_csv(candidate, low_memory=False)
+                return parse_isd_csv(df)
+            except Exception as exc:
+                log.warning("Failed to parse %s: %s", candidate, exc)
     return None
 
 
@@ -148,7 +150,9 @@ def run():
     DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
 
     # Try local file first, then download
-    parsed = load_local_isd() or download_isd()
+    parsed = load_local_isd()
+    if parsed is None:
+        parsed = download_isd()
 
     if parsed is None:
         msg = (

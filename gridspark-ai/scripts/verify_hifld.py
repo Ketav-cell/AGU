@@ -53,21 +53,29 @@ def query_hifld_arcgis(aoi_gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame | None:
     Returns a GeoDataFrame or None on failure.
     """
     bounds = aoi_gdf.total_bounds  # minx, miny, maxx, maxy
+    # Expand envelope by ~0.5 deg in each direction to ensure line endpoints
+    # outside the buffer circle but crossing it are included in the query.
+    pad = 0.5
     geometry_envelope = {
-        "xmin": bounds[0],
-        "ymin": bounds[1],
-        "xmax": bounds[2],
-        "ymax": bounds[3],
+        "xmin": bounds[0] - pad,
+        "ymin": bounds[1] - pad,
+        "xmax": bounds[2] + pad,
+        "ymax": bounds[3] + pad,
         "spatialReference": {"wkid": 4326},
     }
 
+    # ArcGIS REST accepts comma-separated bbox more reliably than JSON envelope
+    bbox = (
+        f"{geometry_envelope['xmin']},{geometry_envelope['ymin']},"
+        f"{geometry_envelope['xmax']},{geometry_envelope['ymax']}"
+    )
     params = {
         "where": "1=1",
-        "geometry": json.dumps(geometry_envelope),
+        "geometry": bbox,
         "geometryType": "esriGeometryEnvelope",
         "inSR": "4326",
         "spatialRel": "esriSpatialRelIntersects",
-        "outFields": "OBJECTID,ID,TYPE,STATUS,NAICS_CODE,NAICS_DESC,VOLTAGE,VOLT_CLASS,INFERRED,SUB_1,SUB_2,SHAPE_Length",
+        "outFields": "*",
         "outSR": "4326",
         "f": "geojson",
         "resultOffset": 0,
