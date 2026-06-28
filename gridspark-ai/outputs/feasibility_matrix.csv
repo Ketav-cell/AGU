@@ -1,0 +1,2 @@
+target_county,event,hifld_grid_status,fpa_fod_ignition_status,mtbs_wfigs_boundary_status,sentinel2_prefire_status,noaa_isd_status,notes,overall_status
+Lane County,Holiday Farm Fire,Manual Check,Manual Check,Manual Check,To verify,Manual Check,HIFLD ArcGIS REST API unreachable. Manual download required. | NOAA ISD download failed. Manual download from https://www.ncei.noaa.gov/data/global-hourly/access/2020/726930-24221.csv | FPA-FOD file not found in data/raw/. Manual download required. | No perimeter file found in data/raw/. Manual MTBS/WFIGS download required.,Pending

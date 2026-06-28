@@ -1,0 +1,20 @@
+column,dtype,source,description
+sample_id,str,generated,Unique row identifier (county_event_buffer_corridor_date)
+county,str,config,County name (e.g. Lane County)
+event_name,str,config,Fire event name (e.g. Holiday Farm Fire)
+date,date,NOAA ISD,Observation date (YYYY-MM-DD)
+buffer_m,int,config,"Buffer distance in meters (1000, 3000, or 5000)"
+corridor_id,str,HIFLD,HIFLD transmission line segment ID
+distance_to_transmission_line_m,float,HIFLD + spatial join,Distance from grid sample point to nearest HIFLD transmission line
+ndvi_mean,float,Sentinel-2 B8/B4 (10 m),Mean NDVI within sample buffer — proxy for vegetation density
+ndmi_mean,float,Sentinel-2 B8/B11 (10–20 m),Mean NDMI — normalized difference moisture index; lower = drier fuel
+nbr_mean,float,Sentinel-2 B8/B12 (10–20 m),Mean NBR — normalized burn ratio; used pre-fire as fuel-load proxy
+wind_speed,float,NOAA ISD,Hourly wind speed (m/s) at nearest ISD station
+wind_gust,float,NOAA ISD,Hourly peak wind gust (m/s) if available; else NaN
+temperature,float,NOAA ISD,Air temperature (°C)
+dew_point,float,NOAA ISD,Dew point temperature (°C)
+relative_humidity,float,derived (Magnus formula),Relative humidity (%) derived from temp and dew point
+precipitation,float,NOAA ISD AA1,1-hour precipitation accumulation (mm); NaN if not reported
+ignition_label,int,FPA-FOD / WFIGS,"Binary label: 1 = known ignition within buffer, 0 = no ignition"
+label_source,str,FPA-FOD / WFIGS,Dataset from which the label was derived
+notes,str,generated,"Free-text quality notes (e.g. cloud contamination, gap-filled weather)"
