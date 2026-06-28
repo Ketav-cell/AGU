@@ -17,6 +17,7 @@ env/
 *.ipynb.bak
 
 # Large raw data files (download manually per README)
+data/raw/Data/
 data/raw/*.zip
 data/raw/*.gdb/
 data/raw/*.gpkg
